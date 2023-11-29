@@ -1,0 +1,2 @@
+# pysicgl # installed locally with pip install -e ../pysicgl for now
+microdot >= 1.3.4, < 2.0.0
