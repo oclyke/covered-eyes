@@ -1,7 +1,9 @@
 import time
 
+
 def current_micros_time():
     return time.time_ns() // 1000
+
 
 class ProfileTimer:
     def set(self):

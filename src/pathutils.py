@@ -1,5 +1,6 @@
 import os
 
+
 def ensure_dirs(path, offset=0):
     """
     Ensure that all directories in a path exist.
@@ -26,9 +27,10 @@ def rmdirr(dir):
     Recursively remove directory.
     Will delete everything inside.
     """
-    for info in os.ilistdir(dir):
-        if info[1] == 0x4000:
-            rmdirr(f"{dir}/{info[0]}")
-        elif info[1] == 0x8000:
-            os.remove(f"{dir}/{info[0]}")
+    for root, dirs, files in os.walk(dir, topdown=False):
+        for name in files:
+            os.remove(os.path.join(root, name))
+        for name in dirs:
+            os.rmdir(os.path.join(root, name))
+
     os.rmdir(dir)

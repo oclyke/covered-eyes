@@ -5,20 +5,17 @@ import socket
 import hidden_shades
 import stack_manager
 import framerate
-import logging
 import profiling
 import time
 import sys
 import os
+import traceback
+import opensimplex
 
 from drivers.artnet import ArtnetDriver
 from drivers.udp import UDPDriver
 
 from microdot_asyncio import Microdot, Request, Response
-
-ALPHA_TRANSPARENCY_NONE = 0x00000000
-ALPHA_TRANSPARENCY_HALF = 0x40000000
-ALPHA_TRANSPARENCY_FULL = 0x7F000000
 
 # get the absolute location of this file
 # this is used to add the persistent directory to the system path
@@ -38,14 +35,14 @@ os.makedirs(PERSISTENT_DIR, exist_ok=True)
 EXAMPLE_SHARDS_DIR = f"{COVERED_EYES_ROOT}/example-shards"
 SHARDS_SOURCE = f"{PERSISTENT_DIR}/shards_source"
 if not os.path.exists(f"{SHARDS_SOURCE}"):
-  print(f"Making a symbolic link to the example shards directory ({EXAMPLE_SHARDS_DIR} <-> {SHARDS_SOURCE})")
-  os.symlink(f"{EXAMPLE_SHARDS_DIR}", f"{SHARDS_SOURCE}", target_is_directory=True)
+    print(
+        f"Making a symbolic link to the example shards directory ({EXAMPLE_SHARDS_DIR} <-> {SHARDS_SOURCE})"
+    )
+    os.symlink(f"{EXAMPLE_SHARDS_DIR}", f"{SHARDS_SOURCE}", target_is_directory=True)
 
 print("Adding the persistent dir to the system path")
 print(f"persistent dir: {PERSISTENT_DIR}")
 sys.path.append(PERSISTENT_DIR)
-
-logger = logging.Manager(f"{PERSISTENT_DIR}/logs")
 
 print("Loading hardware config")
 print(PERSISTENT_DIR)
@@ -59,6 +56,8 @@ hw_config = cache.Cache(
     },
 )
 
+print("Seeding opensimplex")
+opensimplex.seed(int(time.time()))
 
 drivers = [
     UDPDriver("0.0.0.0", (6969, 6420)),
@@ -78,13 +77,11 @@ audio_sources = [
 ]
 
 
-
-
-
 # create global managers
 artnet_provider = hidden_shades.ArtnetProvider(f"{EPHEMERAL_DIR}/artnet")
 audio_manager = hidden_shades.AudioManager(f"{EPHEMERAL_DIR}/audio")
 globals = hidden_shades.GlobalsManager(f"{EPHEMERAL_DIR}/globals")
+
 
 # make pysicgl interfaces
 def create_interface(screen):
@@ -92,26 +89,29 @@ def create_interface(screen):
     interface = pysicgl.Interface(screen, mem)
     return (interface, mem)
 
+
 display = pysicgl.Screen((hw_config.get("width"), hw_config.get("height")))
 visualizer, visualizer_memory = create_interface(display)
 corrected, corrected_memory = create_interface(display)
 canvas, canvas_memory = create_interface(display)
 
+
 # function to load a given shard uuid and return the module
 def load_shard(uuid):
-  # Import the top-level package
-  package_name = "shards_source"
-  submodule_name = f"{uuid}"
-  package = __import__(package_name, fromlist=[submodule_name])
+    # Import the top-level package
+    package_name = "shards_source"
+    submodule_name = f"{uuid}"
+    package = __import__(package_name, fromlist=[submodule_name])
 
-  # Access the submodule from the package
-  shard = getattr(package, submodule_name)
+    # Access the submodule from the package
+    shard = getattr(package, submodule_name)
 
-  print(f"Loaded module: {package}")
-  print(f"Loaded shard: {shard}")
+    print(f"Loaded module: {package}")
+    print(f"Loaded shard: {shard}")
 
-  # Return the submodule
-  return shard
+    # Return the submodule
+    return shard
+
 
 # a function which sets the shard for a given layer after
 # initialization
@@ -121,11 +121,14 @@ def layer_post_init_hook(layer):
     layer.set_shard(shard)
     layer.initialize_frame_generator()
 
+
 # a function called for each layer in the stack upon creation
 # this allows the program to keep the details of loading shards
 # separate from the job of the Stack class
 def stack_initializer(id, path):
-    return hidden_shades.Layer(id, path, canvas, globals=globals, post_init_hook=layer_post_init_hook)
+    return hidden_shades.Layer(
+        id, path, canvas, globals=globals, post_init_hook=layer_post_init_hook
+    )
 
 
 # define stacks
@@ -143,7 +146,7 @@ async def run_pipeline():
     output_event = asyncio.Event()
 
     def current_milli_time():
-      return round(time.time() * 1000)
+        return round(time.time() * 1000)
 
     async def rate_limiter(frequency):
         period_ms = 1000 / frequency
@@ -167,7 +170,9 @@ async def run_pipeline():
 
         # zero the visualizer to prevent artifacts from previous render loops
         # from leaking through
-        pysicgl.functional.interface_fill(visualizer, ALPHA_TRANSPARENCY_FULL | 0x000000)
+        pysicgl.functional.interface_fill(
+            visualizer, hidden_shades.globals.ALPHA_TRANSPARENCY_FULL | 0x000000
+        )
 
         # loop over all layers in the active stack manager
         for layer in stack_manager.active:
@@ -176,23 +181,30 @@ async def run_pipeline():
                 # zero the layer interface for each shard
                 # (if a layer wants to use persistent memory it can do whacky stuff
                 # such as allocating its own local interface and copying out the results)
-                pysicgl.functional.interface_fill(canvas, ALPHA_TRANSPARENCY_FULL | 0x000000)
+                pysicgl.functional.interface_fill(
+                    canvas, hidden_shades.globals.ALPHA_TRANSPARENCY_FULL | 0x000000
+                )
 
                 # run the layer
                 try:
                     layer.run()
                 except Exception as e:
-                    logger.log_exception(e)
+                    print(f"Exception in layer {layer.id}: {e}")
+                    traceback.print_exc()
                     layer.set_active(False)
 
                 # compose the canvas memory onto the visualizer memory
-                pysicgl.functional.compose(visualizer, display, layer.canvas.memory, layer.compositor)
+                pysicgl.functional.compose(
+                    visualizer, display, layer.canvas.memory, layer.compositor
+                )
 
         # gamma correct the canvas
         pysicgl.functional.gamma_correct(visualizer, corrected)
 
         # apply global brightness
-        pysicgl.functional.scale(corrected, globals.variable_manager.variables["brightness"].value)
+        pysicgl.functional.scale(
+            corrected, globals.variable_manager.variables["brightness"].value
+        )
 
         # output the display data
         for driver in drivers:
@@ -206,6 +218,7 @@ async def run_pipeline():
         await output_event.wait()
         output_event.clear()
 
+
 async def serve_api():
     from api import api_app, init_api_app, api_version
 
@@ -214,7 +227,7 @@ async def serve_api():
         stack_manager,
         canvas,
         layer_post_init_hook,
-        persistent_dir=PERSISTENT_DIR,
+        shards_source_dir=SHARDS_SOURCE,
         globals=globals,
     )
 
@@ -249,24 +262,25 @@ async def serve_api():
     # serve the api
     asyncio.create_task(app.start_server(debug=True, port=PORT))
 
+
 async def control_visualizer():
-  # information about visualizer control server
-  CONTROL_HOST = "0.0.0.0"
-  CONTROL_PORT = 6969
+    # information about visualizer control server
+    CONTROL_HOST = "0.0.0.0"
+    CONTROL_PORT = 6969
 
-  # format the control message which indicates the screen resolution
-  config_message = f"{display.width} {display.height}\n"
+    # format the control message which indicates the screen resolution
+    config_message = f"{display.width} {display.height}\n"
 
-  while True:
-    try:
-      # open a connection to the control server in the visualizer
-      control = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      control.connect(socket.getaddrinfo(CONTROL_HOST, CONTROL_PORT)[0][-1])
-      control.send(config_message.encode("utf-8"))
-      control.close()
-    except:
-      pass
-    await asyncio.sleep(5.0)
+    while True:
+        try:
+            # open a connection to the control server in the visualizer
+            control = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            control.connect(socket.getaddrinfo(CONTROL_HOST, CONTROL_PORT)[0][-1])
+            control.send(config_message.encode("utf-8"))
+            control.close()
+        except:
+            pass
+        await asyncio.sleep(5.0)
 
 
 async def blink():

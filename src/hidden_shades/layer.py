@@ -7,9 +7,8 @@ from pathutils import rmdirr
 
 
 class Layer:
-
-
     DEFAULT_COMPOSITION_MODE = "ALPHA_SOURCE_OVER"
+    DEFAULT_COLOR_SEQUENCE_INTERPOLATOR = "CONTINUOUS_CIRCULAR"
 
     def __init__(self, id, path, interface, globals, init_info={}, post_init_hook=None):
         self.id = id
@@ -57,7 +56,12 @@ class Layer:
         self._private_variable_manager.declare_variable(
             ColorSequenceVariable(
                 "palette",
-                pysicgl.ColorSequence([0x000000, 0xFFFFFF]),
+                pysicgl.ColorSequence(
+                    [0x000000, 0xFFFFFF],
+                    pysicgl.interpolation.__dict__[
+                        Layer.DEFAULT_COLOR_SEQUENCE_INTERPOLATOR
+                    ],
+                ),
             )
         )
         self._private_variable_manager.declare_variable(
@@ -126,7 +130,8 @@ class Layer:
         if self._active:
             next(self._frame_generator_obj)
             pysicgl.functional.scale(
-                self.canvas, self._private_variable_manager.variables["brightness"].value
+                self.canvas,
+                self._private_variable_manager.variables["brightness"].value,
             )
 
     def reset_canvas(self):

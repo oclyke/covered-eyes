@@ -1,0 +1,20 @@
+[project]
+name = "pysicgl"
+authors = [
+  {name = "oclyke", email = "oclyke@oclyke.dev"},
+]
+description = "sicgl for Python"
+
+[project.urls]
+Source = "https://github.com/oclyke/covered-eyes"
+
+[tool.black]
+include = '''
+src\/.*\.pyi?$|
+tests\/.*\.pyi?$|
+examples\/.*\.pyi?$ |
+example-shards\/.*\.pyi?$
+'''
+exclude = '''
+venv\/.*\.pyi?$
+'''

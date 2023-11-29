@@ -3,13 +3,15 @@ from cache import Cache
 from .variables.manager import VariableManager
 from .variables.types import FloatingVariable, ColorSequenceVariable
 
+ALPHA_TRANSPARENCY_NONE = 0x00000000
 ALPHA_TRANSPARENCY_HALF = 0x40000000
+ALPHA_TRANSPARENCY_FULL = 0x7F000000
 
 DEFAULT_PALETTE = pysicgl.ColorSequence(
+    interpolator=pysicgl.interpolation.CONTINUOUS_CIRCULAR,
     colors=list(
         map(
             lambda color: ALPHA_TRANSPARENCY_HALF | color,
-            
             [
                 0xFF0000,
                 0xFF5F00,

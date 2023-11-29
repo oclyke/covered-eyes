@@ -12,10 +12,16 @@ class ColorSequenceVariable(VariableDeclaration):
 
     def serialize(self, value):
         colors = []
+        interpolator_name = ""
         for color in value:
             colors.append(color)
-        return json.dumps({"colors": colors})
+        for name, interpolator in pysicgl.interpolation.__dict__.items():
+            if interpolator == value.interpolator:
+                interpolator_name = name
+
+        return json.dumps({"colors": colors, "interpolator": interpolator_name})
 
     def deserialize(self, ser_value):
         data = json.loads(ser_value)
-        return pysicgl.ColorSequence(data["colors"])
+        interpolator = pysicgl.interpolation.__dict__[data["interpolator"]]
+        return pysicgl.ColorSequence(colors=data["colors"], interpolator=interpolator)
