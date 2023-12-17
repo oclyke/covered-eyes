@@ -1,4 +1,5 @@
 import pysicgl
+import numpy
 import opensimplex
 from pysicgl_utils import Display
 from hidden_shades import timebase
@@ -35,6 +36,12 @@ class FloatVec2:
 
 
 def frames(layer):
+    # prepare a few static variables
+    screen = layer.canvas.screen
+    display = Display(screen)
+    field = [0.0] * screen.pixels
+    print(len(field))
+
     # use the TimeWarp class to make an offset from the base time
     # this begins at unity speed (1.0) but will be updated by the
     # declared speed variable
@@ -46,12 +53,51 @@ def frames(layer):
     # layer_manager.initialize_variables() method is called.
     offset = 0.0
 
+    state = {
+        "scalar_field": None,
+        "xs": None,
+        "ys": None,
+        "zs": None,
+    }
+
+    def update_sample_arrays():
+        scaleX = layer.variable_manager.variables["scaleX"].value
+        scaleY = layer.variable_manager.variables["scaleY"].value
+
+        (nx, ny) = display.extent
+
+        xs = numpy.linspace(0, scaleX, num=nx)
+        ys = numpy.linspace(0, scaleY, num=ny)
+
+        state["xs"] = xs
+        state["ys"] = ys
+
+    def fill_scalar_field():
+        offset = layer.variable_manager.variables["offset"].value
+        z = timewarp.local() + offset
+        zs = numpy.linspace(z, z, num=1)
+        out = opensimplex.noise3array(state["xs"], state["ys"], zs)
+
+        # print(out.size)
+
+        # This loop is evidence of the need for pysicgl to support
+        # numpy arrays in the constructor for ScalarField objects
+        (nx, ny) = display.extent
+        for idx in range(nx):
+            for idy in range(ny):
+                field[idx + idy * nx] = float(out[0][idy][idx])
+
+        state["scalar_field"] = pysicgl.ScalarField(field)
+
     # a callback function to handle changes to declared variables
     def handle_variable_changes(variable):
         name, value = variable.name, variable.value
 
         if name == "speed":
             timewarp.set_frequency(value)
+        if name == "scaleX" or  name == "scaleY" or name == "centerX" or name == "centerY":
+            update_sample_arrays()            
+            fill_scalar_field()
 
     # a responder which injects the handle_variable_changes()
     # callback into the declared variables (as needed)
@@ -76,41 +122,8 @@ def frames(layer):
     )
     layer.variable_manager.initialize_variables()
 
-    # prepare a few static variables
-    screen = layer.canvas.screen
-    display = Display(screen)
-    field = [0.0] * screen.pixels
-
-    state = {
-        "scalar_field": None,
-    }
-
-    def fill_scalar_field():
-        scaleX = layer.variable_manager.variables["scaleX"].value
-        scaleY = layer.variable_manager.variables["scaleY"].value
-        offset = layer.variable_manager.variables["offset"].value
-
-        for info in display.pixel_info():
-            idx, coordinates, position = info
-            x, y = position
-            x, y = x * scaleX, y * scaleY
-            z = timewarp.local() + offset
-
-            field[idx] = opensimplex.noise3(x=x * scaleX, y=y * scaleY, z=z)
-
-        state["scalar_field"] = pysicgl.ScalarField(field)
-
     while True:
         yield None
-
-        # get variables
-        offset = layer.variable_manager.variables["offset"].value
-
-        # the timewarp uses its internal speed, as well as the speed
-        # of the reference time (in this case timebase.local) to
-        # compute its own local time
-        z = timewarp.local() + offset
-
         # fill the scalar field with noise
         fill_scalar_field()
 
