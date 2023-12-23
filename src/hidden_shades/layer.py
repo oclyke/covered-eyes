@@ -1,4 +1,5 @@
 import pysicgl
+import gpu
 from cache import Cache
 from .variables.manager import VariableManager
 from .variables.types import OptionVariable, FloatingVariable, ColorSequenceVariable
@@ -7,14 +8,24 @@ from pathutils import rmdirr
 
 
 class Layer:
-    DEFAULT_COMPOSITION_MODE = "ALPHA_SOURCE_OVER"
+    DEFAULT_COMPOSITION_MODE = list(filter(lambda key: key == "alpha_source_over", gpu.composition.modes.keys()))[0]
     DEFAULT_COLOR_SEQUENCE_INTERPOLATOR = "CONTINUOUS_CIRCULAR"
 
-    def __init__(self, id, path, interface, globals, init_info={}, post_init_hook=None):
+    def __init__(self, id, path, interface, globals, window, gpu_environment, init_info={}, post_init_hook=None):
         self.id = id
 
         # reference to hidden shades globals
         self._globals = globals
+
+        # reference to the window
+        self.window = window
+        self.gpu_environment = gpu_environment
+
+        _, source_texture, _ = gpu_environment["source"]
+        self.source_texture = source_texture
+
+        # default to copying the canvas into the source texture
+        self.use_source = False
 
         # the root path for this layer will not change during its lifetime
         self._root_path = path
@@ -49,7 +60,7 @@ class Layer:
             OptionVariable(
                 "composition_mode",
                 Layer.DEFAULT_COMPOSITION_MODE,
-                pysicgl.composition.__dict__.keys(),
+                gpu.composition.modes.keys(),
                 responders=[self._private_variable_responder],
             )
         )
@@ -94,7 +105,7 @@ class Layer:
     def _handle_private_variable_change(self, variable):
         if variable.name == "composition_mode":
             key = self.private_variable_manager.variables["composition_mode"].value
-            self._compositor = pysicgl.composition.__dict__[key]
+            self._composition_mode = gpu.composition.modes[key]
 
     def _handle_info_change(self, key, value):
         self.reset_canvas()
@@ -134,6 +145,13 @@ class Layer:
                 self._private_variable_manager.variables["brightness"].value,
             )
 
+            if not self.use_source:
+                # when the use_source flag is set, the layer is responsible for setting
+                # the contents of the source texture. (e.g. they used a shader to render)
+
+                # copy the canvas layer to the source texture
+                self.source_texture.write(self.canvas.memory)
+
     def reset_canvas(self):
         pysicgl.functional.interface_fill(self.canvas, 0x000000)
 
@@ -169,8 +187,8 @@ class Layer:
             return self._globals.variable_manager.variables["palette"].value
 
     @property
-    def compositor(self):
-        return self._compositor
+    def composition_mode(self):
+        return self._composition_mode
 
     @property
     def active(self):
