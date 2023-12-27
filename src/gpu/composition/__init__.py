@@ -52,8 +52,11 @@ class Compositor:
             in vec2 uv;
             uniform sampler2D Source;
             uniform sampler2D Destination;
+            uniform float brightness;
             out vec4 fragColor;
             void main() {
+                vec4 srcColor = texture(Source, uv);
+                vec4 scaledSourceColor = vec4(srcColor.rgb * brightness, srcColor.a);
                 switch (composition_mode) {
                     case -1: {
                         // debugging
@@ -66,12 +69,12 @@ class Compositor:
                     }
                     case 1: {
                         // alpha copy
-                        fragColor = texture(Source, uv);
+                        fragColor = scaledSourceColor;
                         break;
                     }
                     case 2: {
                         // alpha source
-                        fragColor = texture(Source, uv);
+                        fragColor = scaledSourceColor;
                         break;
                     }
                     case 3: {
@@ -81,77 +84,77 @@ class Compositor:
                     }
                     case 4: {
                         // alpha source over
-                        vec4 srcColor = texture(Source, uv);
+                        vec4 srcColor = scaledSourceColor;
                         vec4 dstColor = texture(Destination, uv);
                         fragColor = srcColor + dstColor * (1.0 - srcColor.a);
                         break;
                     }
                     case 5: {
                         // alpha destination over
-                        vec4 srcColor = texture(Source, uv);
+                        vec4 srcColor = scaledSourceColor;
                         vec4 dstColor = texture(Destination, uv);
                         fragColor = dstColor + srcColor * (1.0 - dstColor.a);
                         break;
                     }
                     case 6: {
                         // alpha source in
-                        vec4 srcColor = texture(Source, uv);
+                        vec4 srcColor = scaledSourceColor;
                         vec4 dstColor = texture(Destination, uv);
                         fragColor = srcColor * dstColor.a;
                         break;
                     }
                     case 7: {
                         // alpha destination in
-                        vec4 srcColor = texture(Source, uv);
+                        vec4 srcColor = scaledSourceColor;
                         vec4 dstColor = texture(Destination, uv);
                         fragColor = dstColor * srcColor.a;
                         break;
                     }
                     case 8: {
                         // alpha source out
-                        vec4 srcColor = texture(Source, uv);
+                        vec4 srcColor = scaledSourceColor;
                         vec4 dstColor = texture(Destination, uv);
                         fragColor = srcColor * (1.0 - dstColor.a);
                         break;
                     }
                     case 9: {
                         // alpha destination out
-                        vec4 srcColor = texture(Source, uv);
+                        vec4 srcColor = scaledSourceColor;
                         vec4 dstColor = texture(Destination, uv);
                         fragColor = dstColor * (1.0 - srcColor.a);
                         break;
                     }
                     case 10: {
                         // alpha source atop
-                        vec4 srcColor = texture(Source, uv);
+                        vec4 srcColor = scaledSourceColor;
                         vec4 dstColor = texture(Destination, uv);
                         fragColor = srcColor * dstColor.a + dstColor * (1.0 - srcColor.a);
                         break;
                     }
                     case 11: {
                         // alpha destination atop
-                        vec4 srcColor = texture(Source, uv);
+                        vec4 srcColor = scaledSourceColor;
                         vec4 dstColor = texture(Destination, uv);
                         fragColor = dstColor * srcColor.a + srcColor * (1.0 - dstColor.a);
                         break;
                     }
                     case 12: {
                         // alpha xor
-                        vec4 srcColor = texture(Source, uv);
+                        vec4 srcColor = scaledSourceColor;
                         vec4 dstColor = texture(Destination, uv);
                         fragColor = srcColor * (1.0 - dstColor.a) + dstColor * (1.0 - srcColor.a);
                         break;
                     }
                     case 13: {
                         // alpha plus lighter
-                        vec4 srcColor = texture(Source, uv);
+                        vec4 srcColor = scaledSourceColor;
                         vec4 dstColor = texture(Destination, uv);
                         fragColor = min(srcColor + dstColor, vec4(1.0));
                         break;
                     }
                     case 14: {
                         // alpha plus darker
-                        vec4 srcColor = texture(Source, uv);
+                        vec4 srcColor = scaledSourceColor;
                         vec4 dstColor = texture(Destination, uv);
                         fragColor = max(srcColor + dstColor - vec4(1.0), vec4(0.0));
                         break;
@@ -200,10 +203,11 @@ class Compositor:
         vbo = self._ctx.buffer(vertices)
         self._vao = self._ctx.simple_vertex_array(self._program, vbo, 'in_vert')
 
-    def render(self, source, destination, mode):
+    def render(self, source, destination, mode, brightness):
         self._program['Source'].value = source
         self._program['Destination'].value = destination
         self._program['composition_mode'].value = mode
+        self._program['brightness'].value = brightness
         self._vao.render(moderngl.TRIANGLE_STRIP)
 
         # print(self._program['composition_mode'].value)

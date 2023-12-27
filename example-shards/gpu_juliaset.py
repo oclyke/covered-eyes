@@ -110,10 +110,11 @@ def frames(layer):
         # fill the color texture from the layer palette
         colors = pysicgl.functional.interpolate_color_sequence(layer.palette, color_sample_points)
         for i, c in enumerate(colors):
-            colorbytes[i * 4] = (c >> 24) & 0xFF
-            colorbytes[i * 4 + 1] =  (c >> 16) & 0xFF
-            colorbytes[i * 4 + 2] = (c >> 8) & 0xFF
-            colorbytes[i * 4 + 3] = (c >> 0) & 0xFF
+            colorbytes[i * 4] = (c >> 16) & 0xFF
+            colorbytes[i * 4 + 1] =  (c >> 8) & 0xFF
+            colorbytes[i * 4 + 2] = (c >> 0) & 0xFF
+            colorbytes[i * 4 + 3] = (c >> 24) & 0xFF
+        color_texture.use(location=5)
         color_texture.write(colorbytes)
 
         # get the variable values

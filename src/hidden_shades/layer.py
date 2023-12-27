@@ -68,7 +68,7 @@ class Layer:
             ColorSequenceVariable(
                 "palette",
                 pysicgl.ColorSequence(
-                    [0x000000, 0xFFFFFF],
+                    [0x000000, 0xFFFFFFFF],
                     pysicgl.interpolation.__dict__[
                         Layer.DEFAULT_COLOR_SEQUENCE_INTERPOLATOR
                     ],
@@ -140,10 +140,6 @@ class Layer:
         """
         if self._active:
             next(self._frame_generator_obj)
-            pysicgl.functional.scale(
-                self.canvas,
-                self._private_variable_manager.variables["brightness"].value,
-            )
 
             if not self.use_source:
                 # when the use_source flag is set, the layer is responsible for setting
@@ -193,3 +189,7 @@ class Layer:
     @property
     def active(self):
         return self._active
+
+    @property
+    def brightness(self):
+        return self._private_variable_manager.variables["brightness"].value

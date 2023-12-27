@@ -272,6 +272,7 @@ async def run_pipeline():
                     source=source_texture_id,
                     destination=(destination_texture_ping_id if ping else destination_texture_pong_id),
                     mode=layer.composition_mode,
+                    brightness=layer.brightness,
                 )
             debug(", ", end="")
         
