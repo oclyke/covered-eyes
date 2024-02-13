@@ -92,6 +92,8 @@ class Layer:
             "active": True,
             "use_local_palette": False,
         }
+        if "id" in init_info:
+            del init_info["id"]
         self._info = Cache(
             f"{self._root_path}/info",
             {**initial_info, **init_info},
