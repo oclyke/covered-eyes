@@ -25,7 +25,7 @@ def layer_response(layer):
     }
 
 
-def init_output_app(stack_manager, canvas, layer_post_init_hook, globals):
+def init_output_app(stack_manager, canvas, layer_post_init_hook, globals, window, gpu_environment):
     def add_layer_to_stack(stack, layer_data, canvas, layer_post_init_hook):
         """
         add a layer to the stack
@@ -37,6 +37,8 @@ def init_output_app(stack_manager, canvas, layer_post_init_hook, globals):
             path,
             canvas,
             globals=globals,
+            window=window,
+            gpu_environment=gpu_environment,
             init_info=layer_config,
             post_init_hook=layer_post_init_hook,
         )

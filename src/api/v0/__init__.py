@@ -12,10 +12,10 @@ api_app = Microdot()
 
 
 def init_api_app(
-    stack_manager, canvas, layer_post_init_hook, shards_source_dir, globals
+    stack_manager, canvas, layer_post_init_hook, shards_source_dir, globals, window, gpu_environment
 ):
     # a sorta ugly way to pass local data into the stacks app...
-    init_output_app(stack_manager, canvas, layer_post_init_hook, globals)
+    init_output_app(stack_manager, canvas, layer_post_init_hook, globals, window, gpu_environment)
     init_shards_app(shards_source_dir)
 
     api_app.mount(shards_app, url_prefix="/shards")

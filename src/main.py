@@ -5,6 +5,8 @@ import socket
 import hidden_shades
 import stack_manager
 import framerate
+import gpu
+import numpy as np
 import profiling
 import time
 import sys
@@ -15,7 +17,16 @@ import opensimplex
 from drivers.artnet import ArtnetDriver
 from drivers.udp import UDPDriver
 
+from moderngl_window import Timer, weakref, logger
+
 from microdot_asyncio import Microdot, Request, Response
+
+# DEBUG = True
+DEBUG = False
+
+debug = lambda *args, **kwargs: None
+if DEBUG:
+    debug = print
 
 # get the absolute location of this file
 # this is used to add the persistent directory to the system path
@@ -60,8 +71,8 @@ print("Seeding opensimplex")
 opensimplex.seed(int(time.time()))
 
 drivers = [
-    UDPDriver("0.0.0.0", (6969, 6420)),
-    ArtnetDriver("192.168.4.177"),
+    # UDPDriver("0.0.0.0", (6969, 6420)),
+    # ArtnetDriver("192.168.4.177"),
 ]
 
 # audio sources
@@ -91,10 +102,15 @@ def create_interface(screen):
 
 
 display = pysicgl.Screen((hw_config.get("width"), hw_config.get("height")))
-visualizer, visualizer_memory = create_interface(display)
-corrected, corrected_memory = create_interface(display)
 canvas, canvas_memory = create_interface(display)
+accumulator, accumulator_memory = create_interface(display)
+output, output_memory = create_interface(display)
 
+aspect_ratio = display.width / display.height
+window, timer = gpu.create_window(aspect_ratio=aspect_ratio)
+compositor = gpu.Compositor(ctx=window.ctx, aspect_ratio=aspect_ratio)
+corrector = gpu.Corrector(ctx=window.ctx, aspect_ratio=aspect_ratio)
+gpu_environment = gpu.create_environment(window, (display.width, display.height))
 
 # function to load a given shard uuid and return the module
 def load_shard(uuid):
@@ -127,18 +143,56 @@ def layer_post_init_hook(layer):
 # separate from the job of the Stack class
 def stack_initializer(id, path):
     return hidden_shades.Layer(
-        id, path, canvas, globals=globals, post_init_hook=layer_post_init_hook
+        id, path, canvas, globals=globals, window=window, gpu_environment=gpu_environment, post_init_hook=layer_post_init_hook
     )
-
 
 # define stacks
 stack_manager = stack_manager.StackManager(f"{EPHEMERAL_DIR}/stacks", stack_initializer)
 
-
 frate = framerate.FramerateHistory()
 
-
 async def run_pipeline():
+    """
+    This is the main render loop.
+
+    Major Players:
+    - stack manager: manages layer stacks
+    - active layer stack: the active stack of layers (the other stack can be
+        modified and then swapped in)
+    - layers: layers represent an atomic step in the generation of the output.
+        layers have some metadata as well as a program which generates a frame.
+    - compositor: a gpu shader which composes the layers together
+
+    Major Resources:
+    - window: a moderngl_window window which contains the moderngl context.
+    - canvas: working memory for layers. shared between all layers in the stack
+        and cleared between each layer.
+    - accumulator: memory for accumulating the output of the layers for every
+        frame.
+    - output: memory for the final output of the pipeline. separation from the
+        other buffers ensures that brightness and gamma correction do not leak
+        into the environment of the layers.
+
+    - source_texture: texture allocated for the source of the compositor (more
+        or less equivalent to the canvas)
+    - destination_texture_ping: texture allocated for the destination of the
+        compositor (more or less equivalent to the accumulator) uses ping-pong
+        buffering to avoid synchronization issues.
+    - destination_texture_pong: texture allocated for the destination of the
+        compositor (more or less equivalent to the accumulator) uses ping-pong
+        buffering to avoid synchronization issues.
+    - framebuffer_texture: (implicit) texture allocated for the window framebuffer.
+        (more or less equivalent to the output)
+
+    """
+
+    source_texture_id, source_texture, _ = gpu_environment["source"]
+    destination_texture_ping_id, destination_texture_ping_texture, destination_fbo_ping = gpu_environment["destination_ping"]
+    destination_texture_pong_id, destination_texture_pong_texture, destination_fbo_pong = gpu_environment["destination_pong"]
+
+    # if ping is true then render to ping, else render to pong
+    ping = True
+
     # make a timer for profiling the framerate
     profiler = profiling.ProfileTimer()
 
@@ -161,23 +215,36 @@ async def run_pipeline():
             output_event.set()
             next_frame_ms += period_ms
 
-    FRAMERATE = 30
+    # Start a task to control the output rate
+    FRAMERATE = 60
     asyncio.create_task(rate_limiter(FRAMERATE))
 
-    # handle layers
-    while True:
+    timer.start()
+
+    while not window.is_closing:
+        current_time, delta = timer.next_frame()
+
+        # start profiling the frame draw time
         profiler.set()
 
-        # zero the visualizer to prevent artifacts from previous render loops
-        # from leaking through
-        pysicgl.functional.interface_fill(
-            visualizer, hidden_shades.globals.ALPHA_TRANSPARENCY_FULL | 0x000000
-        )
+        # Always bind the window framebuffer before calling render
+        window.use()
+
+        # clear the destination textures
+        window.clear(0.0, 0.0, 0.0, 1.0)
+        destination_fbo_ping.clear(0.0, 0.0, 0.0, 0.0)
+        destination_fbo_pong.clear(0.0, 0.0, 0.0, 0.0)
 
         # loop over all layers in the active stack manager
+        layer_idx = 0
+        debug("Running layer: ", end="")
         for layer in stack_manager.active:
+            debug(f"{layer_idx}", end="")
+            layer_idx += 1
+
             # only compute active layers
             if layer.active:
+                debug("*", end="")
                 # zero the layer interface for each shard
                 # (if a layer wants to use persistent memory it can do whacky stuff
                 # such as allocating its own local interface and copying out the results)
@@ -191,24 +258,43 @@ async def run_pipeline():
                 except Exception as e:
                     print(f"Exception in layer {layer.id}: {e}")
                     traceback.print_exc()
-                    layer.set_active(False)
+                    # layer.set_active(False)
 
-                # compose the canvas memory onto the visualizer memory
-                pysicgl.functional.compose(
-                    visualizer, display, layer.canvas.memory, layer.compositor
+                # compose the source texture onto the destination texture
+                if ping == True:
+                    ping = False
+                    destination_fbo_ping.use()
+                else:
+                    ping = True
+                    destination_fbo_pong.use()
+                
+                compositor.render(
+                    source=source_texture_id,
+                    destination=(destination_texture_ping_id if ping else destination_texture_pong_id),
+                    mode=layer.composition_mode,
+                    brightness=layer.brightness,
                 )
+            debug(", ", end="")
+        
+        debug("")
 
-        # gamma correct the canvas
-        pysicgl.functional.gamma_correct(visualizer, corrected)
-
-        # apply global brightness
-        pysicgl.functional.scale(
-            corrected, globals.variable_manager.variables["brightness"].value
+        # apply corrections
+        window.ctx.screen.use()
+        corrector.render(
+            destination=(destination_texture_ping_id if not ping else destination_texture_pong_id),
+            # brightness=globals.variable_manager.variables["brightness"].value,
+            brightness=1.0,
         )
 
-        # output the display data
+        # output the display data to the window
+        if not window.is_closing:
+            # texture.write(output_memory)
+            window.swap_buffers()
+
+        # output the framebuffer data to the drivers
+        data = window.ctx.screen.read(viewport=(0, 0, display.width, display.height))
         for driver in drivers:
-            driver.push(corrected)
+            driver.push(data)
 
         # compute framerate
         profiler.mark()
@@ -217,6 +303,18 @@ async def run_pipeline():
         # wait for the next output opportunity
         await output_event.wait()
         output_event.clear()
+
+    _, duration = timer.stop()
+    window.destroy()
+    if duration > 0:
+        logger.info(
+            "Duration: {0:.2f}s @ {1:.2f} FPS".format(
+                duration, window.frames / duration
+            )
+        )
+    
+    loop = asyncio.get_running_loop()
+    loop.stop()
 
 
 async def serve_api():
@@ -229,6 +327,8 @@ async def serve_api():
         layer_post_init_hook,
         shards_source_dir=SHARDS_SOURCE,
         globals=globals,
+        window=window,
+        gpu_environment=gpu_environment,
     )
 
     # set up server

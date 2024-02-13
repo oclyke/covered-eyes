@@ -10,6 +10,13 @@ class ColorSequenceVariable(VariableDeclaration):
             TYPECODE_COLOR_SEQUENCE, pysicgl.ColorSequence, name, default, **kwargs
         )
 
+    def validate(self, value):
+        if type(value) is not pysicgl.ColorSequence:
+            return False
+        if value.interpolator not in pysicgl.interpolation.__dict__.values():
+            return False
+        return True
+
     def serialize(self, value):
         colors = []
         interpolator_name = ""
