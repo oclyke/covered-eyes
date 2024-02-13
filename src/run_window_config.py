@@ -1,8 +1,21 @@
 import moderngl
 from asyncio import Event
-from moderngl_window import WindowConfig, setup_basic_logging, get_local_window_cls, activate_context, create_parser, parse_args, Timer, weakref, logger
+from moderngl_window import (
+    WindowConfig,
+    setup_basic_logging,
+    get_local_window_cls,
+    activate_context,
+    create_parser,
+    parse_args,
+    Timer,
+    weakref,
+    logger,
+)
 
-async def async_run_window_config(rate_limit_event: Event, config_cls: WindowConfig, timer=None, args=None) -> None:
+
+async def async_run_window_config(
+    rate_limit_event: Event, config_cls: WindowConfig, timer=None, args=None
+) -> None:
     """
     Run an WindowConfig entering a blocking main loop
 
@@ -32,9 +45,9 @@ async def async_run_window_config(rate_limit_event: Event, config_cls: WindowCon
         title=config_cls.title,
         size=size,
         fullscreen=config_cls.fullscreen or values.fullscreen,
-        resizable=values.resizable
-        if values.resizable is not None
-        else config_cls.resizable,
+        resizable=(
+            values.resizable if values.resizable is not None else config_cls.resizable
+        ),
         gl_version=config_cls.gl_version,
         aspect_ratio=config_cls.aspect_ratio,
         vsync=values.vsync if values.vsync is not None else config_cls.vsync,

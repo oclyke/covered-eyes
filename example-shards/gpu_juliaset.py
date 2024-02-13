@@ -7,13 +7,14 @@ from hidden_shades.timewarp import TimeWarp
 from hidden_shades.variables.responder import VariableResponder
 from hidden_shades.variables.types import FloatingVariable, IntegerVariable
 
+
 def frames(layer):
     NUM_COLORS = 16
 
     window = layer.window
     gpu_environment = layer.gpu_environment
     prog = window.ctx.program(
-        vertex_shader='''
+        vertex_shader="""
             #version 330
 
             in vec2 in_vert;
@@ -23,8 +24,8 @@ def frames(layer):
                 gl_Position = vec4(in_vert, 0.0, 1.0);
                 v_text = in_vert;
             }
-        ''',
-        fragment_shader='''
+        """,
+        fragment_shader="""
             #version 330
 
             in vec2 v_text;
@@ -57,7 +58,7 @@ def frames(layer):
 
                 f_color = texture(Texture, vec2((i == Iter ? 0.0 : float(i)) / float(Iter), 0.0));
             }
-        ''',
+        """,
     )
 
     source_texture_id, source_texture, source_fbo = gpu_environment["source"]
@@ -67,11 +68,11 @@ def frames(layer):
     colorbytes = bytearray(NUM_COLORS * 4)
     color_texture = window.ctx.texture((NUM_COLORS, 1), 4, colorbytes)
     color_texture.use(location=5)
-    prog['Texture'].value = 5
+    prog["Texture"].value = 5
 
     vertices = np.array([-1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0])
-    vbo = window.ctx.buffer(vertices.astype('f4'))
-    vao = window.ctx.simple_vertex_array(prog, vbo, 'in_vert')
+    vbo = window.ctx.buffer(vertices.astype("f4"))
+    vao = window.ctx.simple_vertex_array(prog, vbo, "in_vert")
 
     # declare variables
     # these are all of the floating point variety but there are a
@@ -108,10 +109,12 @@ def frames(layer):
         yield None
 
         # fill the color texture from the layer palette
-        colors = pysicgl.functional.interpolate_color_sequence(layer.palette, color_sample_points)
+        colors = pysicgl.functional.interpolate_color_sequence(
+            layer.palette, color_sample_points
+        )
         for i, c in enumerate(colors):
             colorbytes[i * 4] = (c >> 16) & 0xFF
-            colorbytes[i * 4 + 1] =  (c >> 8) & 0xFF
+            colorbytes[i * 4 + 1] = (c >> 8) & 0xFF
             colorbytes[i * 4 + 2] = (c >> 0) & 0xFF
             colorbytes[i * 4 + 3] = (c >> 24) & 0xFF
         color_texture.use(location=5)
@@ -127,11 +130,11 @@ def frames(layer):
         aspect_ratio = layer.variable_manager.variables["aspect_ratio"].value
 
         # set the uniforms
-        prog['Seed'].value = (seed_real, seed_imaginary)
-        prog['Iter'].value = iterations
-        prog['Center'].value = (center_x, center_y)
-        prog['Zoom'].value = zoom
-        prog['Aspect'].value = aspect_ratio
+        prog["Seed"].value = (seed_real, seed_imaginary)
+        prog["Iter"].value = iterations
+        prog["Center"].value = (center_x, center_y)
+        prog["Zoom"].value = zoom
+        prog["Aspect"].value = aspect_ratio
 
         # use the source texture to render
         source_fbo.clear(1.0, 1.0, 1.0, 1.0)

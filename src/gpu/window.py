@@ -3,12 +3,13 @@ import moderngl_window
 
 from moderngl_window import Timer, weakref
 
+
 def create_window(size=(800, 800), aspect_ratio=1.0):
     """
     Creates the window and returns the window object.
     The window object is a moderngl_window.Window instance and provides the
     ModernGL context and the GLFW window object.
-    
+
     Keyword Arguments:
         size: (int, int) - the size of the window in pixels
         aspect_ratio: float - the aspect ratio of the window
@@ -43,9 +44,9 @@ def create_window(size=(800, 800), aspect_ratio=1.0):
         title=config_cls.title,
         size=size,
         fullscreen=config_cls.fullscreen or values.fullscreen,
-        resizable=values.resizable
-        if values.resizable is not None
-        else config_cls.resizable,
+        resizable=(
+            values.resizable if values.resizable is not None else config_cls.resizable
+        ),
         gl_version=config_cls.gl_version,
         aspect_ratio=aspect_ratio,
         vsync=values.vsync if values.vsync is not None else config_cls.vsync,

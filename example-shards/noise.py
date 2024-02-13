@@ -95,8 +95,13 @@ def frames(layer):
 
         if name == "speed":
             timewarp.set_frequency(value)
-        if name == "scaleX" or  name == "scaleY" or name == "centerX" or name == "centerY":
-            update_sample_arrays()            
+        if (
+            name == "scaleX"
+            or name == "scaleY"
+            or name == "centerX"
+            or name == "centerY"
+        ):
+            update_sample_arrays()
             fill_scalar_field()
 
     # a responder which injects the handle_variable_changes()

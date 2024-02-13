@@ -1,0 +1,25 @@
+# linting
+name: check-lint
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  python-lint:
+    runs-on: ubuntu-latest
+    steps:
+      # check out the repo
+      - uses: actions/checkout@v3
+
+      # setup ci tools
+      - name: set up ci tools
+        run: |
+          . ./scripts/setup.sh
+          pip install -r requirements.dev.txt
+      
+      # lint using pylint
+      - name: run black
+        run: |
+          . bin/venv/bin/activate
+          black . --check

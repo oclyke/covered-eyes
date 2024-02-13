@@ -112,6 +112,7 @@ compositor = gpu.Compositor(ctx=window.ctx, aspect_ratio=aspect_ratio)
 corrector = gpu.Corrector(ctx=window.ctx, aspect_ratio=aspect_ratio)
 gpu_environment = gpu.create_environment(window, (display.width, display.height))
 
+
 # function to load a given shard uuid and return the module
 def load_shard(uuid):
     # Import the top-level package
@@ -143,13 +144,21 @@ def layer_post_init_hook(layer):
 # separate from the job of the Stack class
 def stack_initializer(id, path):
     return hidden_shades.Layer(
-        id, path, canvas, globals=globals, window=window, gpu_environment=gpu_environment, post_init_hook=layer_post_init_hook
+        id,
+        path,
+        canvas,
+        globals=globals,
+        window=window,
+        gpu_environment=gpu_environment,
+        post_init_hook=layer_post_init_hook,
     )
+
 
 # define stacks
 stack_manager = stack_manager.StackManager(f"{EPHEMERAL_DIR}/stacks", stack_initializer)
 
 frate = framerate.FramerateHistory()
+
 
 async def run_pipeline():
     """
@@ -187,8 +196,16 @@ async def run_pipeline():
     """
 
     source_texture_id, source_texture, _ = gpu_environment["source"]
-    destination_texture_ping_id, destination_texture_ping_texture, destination_fbo_ping = gpu_environment["destination_ping"]
-    destination_texture_pong_id, destination_texture_pong_texture, destination_fbo_pong = gpu_environment["destination_pong"]
+    (
+        destination_texture_ping_id,
+        destination_texture_ping_texture,
+        destination_fbo_ping,
+    ) = gpu_environment["destination_ping"]
+    (
+        destination_texture_pong_id,
+        destination_texture_pong_texture,
+        destination_fbo_pong,
+    ) = gpu_environment["destination_pong"]
 
     # if ping is true then render to ping, else render to pong
     ping = True
@@ -267,21 +284,27 @@ async def run_pipeline():
                 else:
                     ping = True
                     destination_fbo_pong.use()
-                
+
                 compositor.render(
                     source=source_texture_id,
-                    destination=(destination_texture_ping_id if ping else destination_texture_pong_id),
+                    destination=(
+                        destination_texture_ping_id
+                        if ping
+                        else destination_texture_pong_id
+                    ),
                     mode=layer.composition_mode,
                     brightness=layer.brightness,
                 )
             debug(", ", end="")
-        
+
         debug("")
 
         # apply corrections
         window.ctx.screen.use()
         corrector.render(
-            destination=(destination_texture_ping_id if not ping else destination_texture_pong_id),
+            destination=(
+                destination_texture_ping_id if not ping else destination_texture_pong_id
+            ),
             # brightness=globals.variable_manager.variables["brightness"].value,
             brightness=1.0,
         )
@@ -312,7 +335,7 @@ async def run_pipeline():
                 duration, window.frames / duration
             )
         )
-    
+
     loop = asyncio.get_running_loop()
     loop.stop()
 

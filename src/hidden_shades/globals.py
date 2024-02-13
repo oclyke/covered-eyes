@@ -32,6 +32,7 @@ DEFAULT_PALETTE_COLORS = list(
     )
 )
 
+
 class GlobalsManager:
     def __init__(self, path):
         # create root path
@@ -47,9 +48,7 @@ class GlobalsManager:
                 "palette",
                 pysicgl.ColorSequence(
                     DEFAULT_PALETTE_COLORS,
-                    pysicgl.interpolation.__dict__[
-                        DEFAULT_COLOR_SEQUENCE_INTERPOLATOR
-                    ],
+                    pysicgl.interpolation.__dict__[DEFAULT_COLOR_SEQUENCE_INTERPOLATOR],
                 ),
             )
         )

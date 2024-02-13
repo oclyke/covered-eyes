@@ -4,6 +4,7 @@ import moderngl
 from .window import create_window
 from .composition import Compositor
 
+
 def create_environment(window, size):
     width, height = size
 
@@ -46,16 +47,25 @@ def create_environment(window, size):
     # The environment
     return {
         "source": (source_texture_id, source_texture, source_fbo),
-        "destination_ping": (destination_texture_ping_id, destination_texture_ping, destination_fbo_ping),
-        "destination_pong": (destination_texture_pong_id, destination_texture_pong, destination_fbo_pong),
+        "destination_ping": (
+            destination_texture_ping_id,
+            destination_texture_ping,
+            destination_fbo_ping,
+        ),
+        "destination_pong": (
+            destination_texture_pong_id,
+            destination_texture_pong,
+            destination_fbo_pong,
+        ),
         # "framebuffer": (framebuffer_texture_id, framebuffer_texture, None),
     }
+
 
 class Corrector:
     def __init__(self, ctx, aspect_ratio):
         self.ctx = ctx
 
-        vertex_shader = '''
+        vertex_shader = """
             #version 330 core
             in vec2 in_vert;
             out vec2 uv;
@@ -63,8 +73,8 @@ class Corrector:
                 gl_Position = vec4(in_vert, 0.0, 1.0);
                 uv = in_vert * 0.5 + 0.5;
             }
-        '''
-        fragment_shader="""
+        """
+        fragment_shader = """
             #version 330 core
             uniform sampler2D Destination;
             uniform float brightness;
@@ -96,16 +106,23 @@ class Corrector:
             fragment_shader=fragment_shader,
         )
 
-        vertices = np.array([
-            -1.0, -1.0,
-             1.0, -1.0,
-            -1.0,  1.0,
-             1.0,  1.0,
-        ], dtype='f4')
+        vertices = np.array(
+            [
+                -1.0,
+                -1.0,
+                1.0,
+                -1.0,
+                -1.0,
+                1.0,
+                1.0,
+                1.0,
+            ],
+            dtype="f4",
+        )
         vbo = self._ctx.buffer(vertices)
-        self._vao = self._ctx.simple_vertex_array(self._program, vbo, 'in_vert')
+        self._vao = self._ctx.simple_vertex_array(self._program, vbo, "in_vert")
 
     def render(self, destination, brightness=1.0):
-        self._program['Destination'] = destination
-        self._program['brightness'] = brightness
+        self._program["Destination"] = destination
+        self._program["brightness"] = brightness
         self._vao.render(moderngl.TRIANGLE_STRIP)

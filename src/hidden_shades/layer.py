@@ -8,10 +8,22 @@ from pathutils import rmdirr
 
 
 class Layer:
-    DEFAULT_COMPOSITION_MODE = list(filter(lambda key: key == "alpha_source_over", gpu.composition.modes.keys()))[0]
+    DEFAULT_COMPOSITION_MODE = list(
+        filter(lambda key: key == "alpha_source_over", gpu.composition.modes.keys())
+    )[0]
     DEFAULT_COLOR_SEQUENCE_INTERPOLATOR = "CONTINUOUS_CIRCULAR"
 
-    def __init__(self, id, path, interface, globals, window, gpu_environment, init_info={}, post_init_hook=None):
+    def __init__(
+        self,
+        id,
+        path,
+        interface,
+        globals,
+        window,
+        gpu_environment,
+        init_info={},
+        post_init_hook=None,
+    ):
         self.id = id
 
         # reference to hidden shades globals

@@ -18,26 +18,27 @@ COMPOSITOR_ALPHA_PLUS_LIGHTER = 13
 COMPOSITOR_ALPHA_PLUS_DARKER = 14
 
 modes = {
-    'alpha_clear': COMPOSITOR_ALPHA_CLEAR,
-    'alpha_copy': COMPOSITOR_ALPHA_COPY,
-    'alpha_source': COMPOSITOR_ALPHA_SOURCE,
-    'alpha_destination': COMPOSITOR_ALPHA_DESTINATION,
-    'alpha_source_over': COMPOSITOR_ALPHA_SOURCE_OVER,
-    'alpha_destination_over': COMPOSITOR_ALPHA_DESTINATION_OVER,
-    'alpha_source_in': COMPOSITOR_ALPHA_SOURCE_IN,
-    'alpha_destination_in': COMPOSITOR_ALPHA_DESTINATION_IN,
-    'alpha_source_out': COMPOSITOR_ALPHA_SOURCE_OUT,
-    'alpha_destination_out': COMPOSITOR_ALPHA_DESTINATION_OUT,
-    'alpha_source_atop': COMPOSITOR_ALPHA_SOURCE_ATOP,
-    'alpha_destination_atop': COMPOSITOR_ALPHA_DESTINATION_ATOP,
-    'alpha_xor': COMPOSITOR_ALPHA_XOR,
-    'alpha_plus_lighter': COMPOSITOR_ALPHA_PLUS_LIGHTER,
-    'alpha_plus_darker': COMPOSITOR_ALPHA_PLUS_DARKER,
+    "alpha_clear": COMPOSITOR_ALPHA_CLEAR,
+    "alpha_copy": COMPOSITOR_ALPHA_COPY,
+    "alpha_source": COMPOSITOR_ALPHA_SOURCE,
+    "alpha_destination": COMPOSITOR_ALPHA_DESTINATION,
+    "alpha_source_over": COMPOSITOR_ALPHA_SOURCE_OVER,
+    "alpha_destination_over": COMPOSITOR_ALPHA_DESTINATION_OVER,
+    "alpha_source_in": COMPOSITOR_ALPHA_SOURCE_IN,
+    "alpha_destination_in": COMPOSITOR_ALPHA_DESTINATION_IN,
+    "alpha_source_out": COMPOSITOR_ALPHA_SOURCE_OUT,
+    "alpha_destination_out": COMPOSITOR_ALPHA_DESTINATION_OUT,
+    "alpha_source_atop": COMPOSITOR_ALPHA_SOURCE_ATOP,
+    "alpha_destination_atop": COMPOSITOR_ALPHA_DESTINATION_ATOP,
+    "alpha_xor": COMPOSITOR_ALPHA_XOR,
+    "alpha_plus_lighter": COMPOSITOR_ALPHA_PLUS_LIGHTER,
+    "alpha_plus_darker": COMPOSITOR_ALPHA_PLUS_DARKER,
 }
+
 
 class Compositor:
     def __init__(self, ctx, aspect_ratio=1.0):
-        vertex_shader = '''
+        vertex_shader = """
             #version 330 core
             in vec2 in_vert;
             out vec2 uv;
@@ -45,8 +46,8 @@ class Compositor:
                 gl_Position = vec4(in_vert, 0.0, 1.0);
                 uv = in_vert * 0.5 + 0.5;
             }
-        '''
-        fragment_shader='''
+        """
+        fragment_shader = """
             #version 330 core
             uniform int composition_mode;
             in vec2 uv;
@@ -165,7 +166,7 @@ class Compositor:
                     }
                 }
             }
-        '''
+        """
 
         self._ctx = ctx
         self._program = self._ctx.program(
@@ -193,21 +194,28 @@ class Compositor:
         #          1.0 * aspect_ratio,  1.0,
         #     ], dtype='f4')
 
-        vertices = np.array([
-            -1.0, -1.0,
-             1.0, -1.0,
-            -1.0,  1.0,
-             1.0,  1.0,
-        ], dtype='f4')
+        vertices = np.array(
+            [
+                -1.0,
+                -1.0,
+                1.0,
+                -1.0,
+                -1.0,
+                1.0,
+                1.0,
+                1.0,
+            ],
+            dtype="f4",
+        )
 
         vbo = self._ctx.buffer(vertices)
-        self._vao = self._ctx.simple_vertex_array(self._program, vbo, 'in_vert')
+        self._vao = self._ctx.simple_vertex_array(self._program, vbo, "in_vert")
 
     def render(self, source, destination, mode, brightness):
-        self._program['Source'].value = source
-        self._program['Destination'].value = destination
-        self._program['composition_mode'].value = mode
-        self._program['brightness'].value = brightness
+        self._program["Source"].value = source
+        self._program["Destination"].value = destination
+        self._program["composition_mode"].value = mode
+        self._program["brightness"].value = brightness
         self._vao.render(moderngl.TRIANGLE_STRIP)
 
         # print(self._program['composition_mode'].value)

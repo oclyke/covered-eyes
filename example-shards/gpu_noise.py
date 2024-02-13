@@ -6,6 +6,7 @@ from hidden_shades.timewarp import TimeWarp
 from hidden_shades.variables.responder import VariableResponder
 from hidden_shades.variables.types import FloatingVariable, IntegerVariable
 
+
 def frames(layer):
     # Required for GPU layers - indicate that the source texture is populated
     # directly by the layer
@@ -46,10 +47,9 @@ def frames(layer):
             state["color_texture"] = color_texture
 
             # Create color sample points (to be used on a per-frame basis)
-            state["color_sample_points"] = list(np.linspace(0, 1, num_colors, endpoint=False))
-            
-            
-
+            state["color_sample_points"] = list(
+                np.linspace(0, 1, num_colors, endpoint=False)
+            )
 
     # a responder which injects the handle_variable_changes()
     # callback into the declared variables (as needed)
@@ -60,7 +60,9 @@ def frames(layer):
         FloatingVariable("speed", 0.5, default_range=(0, 1), responders=[responder])
     )
     layer.variable_manager.declare_variable(
-        IntegerVariable("palette_resolution", 16, default_range=(1, 32), responders=[responder])
+        IntegerVariable(
+            "palette_resolution", 16, default_range=(1, 32), responders=[responder]
+        )
     )
     layer.variable_manager.declare_variable(
         FloatingVariable(
@@ -87,7 +89,7 @@ def frames(layer):
 
     # Create the shader program
     prog = window.ctx.program(
-        vertex_shader='''
+        vertex_shader="""
             #version 330 core
 
             in vec2 in_vert;
@@ -97,8 +99,8 @@ def frames(layer):
                 gl_Position = vec4(in_vert, 0.0, 1.0);
                 uv = in_vert * 0.5 + 0.5;
             }
-        ''',
-        fragment_shader='''
+        """,
+        fragment_shader="""
             #version 330 core
 
             // CC0 license https://creativecommons.org/share-your-work/public-domain/cc0/
@@ -223,36 +225,46 @@ def frames(layer):
                 // Output to screen
                 fragColor = texture(palette, vec2(noiseResult.w, 0.0));
             }
-        ''',
+        """,
     )
-
 
     # Create a vertex array object as a render target
     vertices = np.array([-1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0])
-    vbo = window.ctx.buffer(vertices.astype('f4'))
-    vao = window.ctx.simple_vertex_array(prog, vbo, 'in_vert')
+    vbo = window.ctx.buffer(vertices.astype("f4"))
+    vao = window.ctx.simple_vertex_array(prog, vbo, "in_vert")
 
     # Bind the palette texture to the fragment shader
     # (the other half of this bind is done in the palette_resolution variable handler)
-    prog['palette'].value = 5
+    prog["palette"].value = 5
 
     while True:
         yield None
 
         # fill the color texture from the layer palette
-        colors = pysicgl.functional.interpolate_color_sequence(layer.palette, state["color_sample_points"])
+        colors = pysicgl.functional.interpolate_color_sequence(
+            layer.palette, state["color_sample_points"]
+        )
         for i, c in enumerate(colors):
             state["color_bytes"][i * 4] = (c >> 16) & 0xFF
-            state["color_bytes"][i * 4 + 1] =  (c >> 8) & 0xFF
+            state["color_bytes"][i * 4 + 1] = (c >> 8) & 0xFF
             state["color_bytes"][i * 4 + 2] = (c >> 0) & 0xFF
             state["color_bytes"][i * 4 + 3] = (c >> 24) & 0xFF
         state["color_texture"].use(location=5)
         state["color_texture"].write(state["color_bytes"])
 
         # set the uniforms
-        prog['zed'].value = timewarp.local() % 578.0 # OpenGL / ModernGL seems to choke on really big floats so do this modulus here
-        prog['center'].value = (layer.variable_manager.variables["centerX"].value, layer.variable_manager.variables["centerY"].value, layer.variable_manager.variables["centerZ"].value)
-        prog['scale'].value = (layer.variable_manager.variables["scaleX"].value, layer.variable_manager.variables["scaleY"].value)
+        prog["zed"].value = (
+            timewarp.local() % 578.0
+        )  # OpenGL / ModernGL seems to choke on really big floats so do this modulus here
+        prog["center"].value = (
+            layer.variable_manager.variables["centerX"].value,
+            layer.variable_manager.variables["centerY"].value,
+            layer.variable_manager.variables["centerZ"].value,
+        )
+        prog["scale"].value = (
+            layer.variable_manager.variables["scaleX"].value,
+            layer.variable_manager.variables["scaleY"].value,
+        )
 
         # use the source texture to render
         source_fbo.use()
