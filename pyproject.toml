@@ -1,9 +1,9 @@
 [project]
-name = "pysicgl"
+name = "covered-eyes"
 authors = [
   {name = "oclyke", email = "oclyke@oclyke.dev"},
 ]
-description = "sicgl for Python"
+description = "composable renderer"
 
 [project.urls]
 Source = "https://github.com/oclyke/covered-eyes"

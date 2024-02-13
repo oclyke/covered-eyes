@@ -7,33 +7,30 @@ ALPHA_TRANSPARENCY_NONE = 0x00000000
 ALPHA_TRANSPARENCY_HALF = 0x40000000
 ALPHA_TRANSPARENCY_FULL = 0x7F000000
 
-DEFAULT_PALETTE = pysicgl.ColorSequence(
-    interpolator=pysicgl.interpolation.CONTINUOUS_CIRCULAR,
-    colors=list(
-        map(
-            lambda color: ALPHA_TRANSPARENCY_HALF | color,
-            [
-                0xFF0000,
-                0xFF5F00,
-                0xFFBF00,
-                0xDFFF00,
-                0x7FFF00,
-                0x1FFF00,
-                0x00FF3F,
-                0x00FF9F,
-                0x00FFFF,
-                0x009FFF,
-                0x003FFF,
-                0x1F00FF,
-                0x7F00FF,
-                0xDF00FF,
-                0xFF00BF,
-                0xFF005F,
-            ],
-        )
-    ),
+DEFAULT_COLOR_SEQUENCE_INTERPOLATOR = "CONTINUOUS_CIRCULAR"
+DEFAULT_PALETTE_COLORS = list(
+    map(
+        lambda color: ALPHA_TRANSPARENCY_HALF | color,
+        [
+            0xFF0000,
+            0xFF5F00,
+            0xFFBF00,
+            0xDFFF00,
+            0x7FFF00,
+            0x1FFF00,
+            0x00FF3F,
+            0x00FF9F,
+            0x00FFFF,
+            0x009FFF,
+            0x003FFF,
+            0x1F00FF,
+            0x7F00FF,
+            0xDF00FF,
+            0xFF00BF,
+            0xFF005F,
+        ],
+    )
 )
-
 
 class GlobalsManager:
     def __init__(self, path):
@@ -46,7 +43,15 @@ class GlobalsManager:
         # these global variables are accessible in user space
         self._variable_manager.declare_variable(FloatingVariable("brightness", 1.0))
         self._variable_manager.declare_variable(
-            ColorSequenceVariable("palette", DEFAULT_PALETTE)
+            ColorSequenceVariable(
+                "palette",
+                pysicgl.ColorSequence(
+                    DEFAULT_PALETTE_COLORS,
+                    pysicgl.interpolation.__dict__[
+                        DEFAULT_COLOR_SEQUENCE_INTERPOLATOR
+                    ],
+                ),
+            )
         )
         self._variable_manager.initialize_variables()
 
