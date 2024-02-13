@@ -13,14 +13,10 @@ jobs:
       # check out the repo
       - uses: actions/checkout@v3
 
-      # setup ci tools
+      # lint using black
       - name: set up ci tools
         run: |
           python3 -m venv bin/venv
           . bin/venv/bin/activate
           pip install -r requirements.dev.txt
-      
-      # lint using pylint
-      - name: run black
-        run: |
           black . --check
