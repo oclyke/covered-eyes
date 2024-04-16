@@ -21,17 +21,6 @@ and [fundamental components](#fundamental-components) for tools that might be us
 * [moderngl-window](https://github.com/moderngl/moderngl-window) – Windowing and input handling for moderngl.
 * [microdot](https://github.com/miguelgrinberg/microdot) – Small web framework for Python and MicroPython.
 
-# roadmap
-
-There are a lot of things that need to be done to improve this project.
-Here are jsut a few:
-
-* [ ] remove model logic from the REST API.
-* [ ] standardize + document the environment and tools available in layer source code.
-* [ ] decouple animation source code form the filesystem.
-* [ ] handle caching and version management of animation source code.
-* [ ] set an example configuration to avoid black screen on startup.
-
 # getting started
 
 Starting the runtime begins an animation loop and a REST API server.
@@ -56,3 +45,32 @@ Included in the `/app` directory is an Expo project which creates a GUI for mani
 ```bash
 pip install -e ../pysicgl
 ```
+
+# roadmap
+
+There are a lot of things that need to be done to improve this project.
+Here are just a few:
+
+* [ ] remove model logic from the REST API.
+* [ ] standardize + document the environment and tools available in layer source code.
+* [ ] decouple animation source code form the filesystem.
+* [ ] handle caching and version management of animation source code.
+* [ ] set an example configuration to avoid black screen on startup.
+
+# ground-up rebuild
+
+When (if) I get back to working on this project I will probably reconsider the entire architecture.
+
+* Strongly versioned API for fragments to interact with the runtime.
+  * Fragments declare their API requirements.
+  * Runtime tries to satisfy the requirements, or fails to load the fragment.
+* Consider support for fragments written in other languages.
+(The tricky part, which may prevent this from working, is avoiding serialization of generated data.
+Ultimately the fragments need to have some kind of fast inter-process communication.
+Presently this is handled using shared memory in the Python runtime.)
+* Clearly defined responsibilities of the runtime,
+along with the possibility for extensions (which also need a clearly defined API).
+* Use Google Protobuf for interface definitions.
+* Develop an actual server to host fragments.
+(Think of crates.io and their strict reliance on semantic versioning and
+disallowing the deletion of versions.)
